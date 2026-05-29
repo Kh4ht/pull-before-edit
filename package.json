@@ -1,0 +1,19 @@
+{
+    "name": "pull-before-edit",
+    "displayName": "Pull Before Edit",
+    "description": "Prevents editing until you pull remote changes from GitHub",
+    "version": "1.0.0",
+    "publisher": "kht",
+    "engines": {
+        "vscode": "^1.85.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [],
+    "main": "extension.js",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/YOUR_USERNAME/pull-before-edit"
+    }
+}

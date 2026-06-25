@@ -1,0 +1,5 @@
+HOW TO GENERATE (.vsix) FILE:
+
+Navigate to your extension project's root folder and run the package command:
+
+vsce package

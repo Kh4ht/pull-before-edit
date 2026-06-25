@@ -6,6 +6,7 @@ const execPromise = util.promisify(exec);
 let typingDisposable = null;
 let statusBarItem = null;
 let checkInterval = null;
+let warningShown = false;
 
 function activate(context) {
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
@@ -16,6 +17,7 @@ function activate(context) {
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
         if (!workspaceFolder) return;
 
+        statusBarItem.text = "$(sync~spin) Checking remote...";
         const hasRemoteChanges = await checkRemoteChanges(workspaceFolder.uri.fsPath);
 
         if (hasRemoteChanges) {
@@ -25,22 +27,28 @@ function activate(context) {
                 statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
                 statusBarItem.tooltip = "Run git pull before editing";
 
-                vscode.window.showWarningMessage(
-                    '⚠️ Remote has unpulled changes! Pull before editing.',
-                    'Pull Now'
-                ).then(action => {
-                    if (action === 'Pull Now') {
-                        vscode.commands.executeCommand('git.pull');
-                    }
-                });
+                if (!warningShown) {
+                    warningShown = true;
+                    vscode.window.showWarningMessage(
+                        '⚠️ Remote has unpulled changes! Pull before editing.',
+                        'Pull Now'
+                    ).then(action => {
+                        if (action === 'Pull Now') {
+                            vscode.commands.executeCommand('git.pull');
+                        }
+                    });
+                }
             }
         } else {
+            warningShown = false;
             if (typingDisposable) {
                 typingDisposable.dispose();
                 typingDisposable = null;
                 statusBarItem.text = "$(check) Ready to code";
                 statusBarItem.backgroundColor = undefined;
                 statusBarItem.tooltip = "";
+            } else {
+                statusBarItem.text = "$(check) Ready to code";
             }
         }
     }, 10000);
@@ -51,14 +59,11 @@ function activate(context) {
 
 function blockTyping() {
     typingDisposable = vscode.workspace.onDidChangeTextDocument(event => {
-        const edit = new vscode.WorkspaceEdit();
-        event.contentChanges.forEach(change => {
-            edit.set(event.document.uri, change.range, change.text);
-        });
+        if (event.document.uri.scheme !== 'file') return;
 
-        vscode.workspace.applyEdit(edit).then(() => {
+        vscode.commands.executeCommand('undo').then(() => {
             vscode.window.showWarningMessage(
-                '⛔ Cannot edit - remote changes available! Run git pull first.',
+                '⛔ Cannot edit — remote changes available! Run git pull first.',
                 'Pull Now'
             ).then(action => {
                 if (action === 'Pull Now') {

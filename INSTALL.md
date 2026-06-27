@@ -10,7 +10,7 @@ This guide explains how to install and use the VS Code extension from a `.vsix` 
 Launch **Visual Studio Code** on your machine.
 
 ### 2. Open Command Palette
-Press: Ctrl + Shift + P
+Press: `Ctrl + Shift + P`
 
 ### 3. Run Install Command
 Type and select:

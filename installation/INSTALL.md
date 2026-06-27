@@ -7,7 +7,7 @@ This guide explains how to install and use the VS Code extension from a `.vsix` 
 ## 📦 Install from VSIX
 
 ### 1. Install The Latest Version In This Folder
-inside the installation folder download `pull-before-edit-#.#.#.vsix` with the highest number
+inside the **pull-before-edit/installation** folder download `pull-before-edit-#.#.#.vsix` with the highest number
 
 ### 2. Open VS Code
 Launch **Visual Studio Code** on your machine.

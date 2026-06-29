@@ -8,50 +8,64 @@ let statusBarItem = null;
 let checkInterval = null;
 let warningShown = false;
 
+const INTERVAL_NORMAL = 60000;  // 1 min
+const INTERVAL_URGENT = 10000;  // 10 sec
+
+function scheduleCheck(interval) {
+    if (checkInterval) clearInterval(checkInterval);
+    checkInterval = setInterval(runCheck, interval);
+}
+
+async function runCheck() {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) return;
+
+    statusBarItem.text = "$(sync~spin) Checking remote...";
+    const hasRemoteChanges = await checkRemoteChanges(workspaceFolder.uri.fsPath);
+
+    if (hasRemoteChanges) {
+        scheduleCheck(INTERVAL_URGENT);
+
+        if (!typingDisposable) {
+            blockTyping();
+            statusBarItem.text = "$(warning) Remote has changes! Pull first";
+            statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
+            statusBarItem.tooltip = "Run git pull before editing";
+
+            if (!warningShown) {
+                warningShown = true;
+                vscode.window.showWarningMessage(
+                    '⚠️ Remote has unpulled changes! Pull before editing.',
+                    'Pull Now'
+                ).then(async action => {
+                    if (action === 'Pull Now') {
+                        await vscode.commands.executeCommand('git.pull');
+                        await runCheck();
+                    }
+                });
+            }
+        }
+    } else {
+        scheduleCheck(INTERVAL_NORMAL);
+
+        warningShown = false;
+        if (typingDisposable) {
+            typingDisposable.dispose();
+            typingDisposable = null;
+        }
+        statusBarItem.text = "$(check) Ready to code";
+        statusBarItem.backgroundColor = undefined;
+        statusBarItem.tooltip = "";
+    }
+}
+
 function activate(context) {
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
     statusBarItem.text = "$(sync~spin) Checking remote...";
     statusBarItem.show();
 
-    checkInterval = setInterval(async () => {
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-        if (!workspaceFolder) return;
-
-        statusBarItem.text = "$(sync~spin) Checking remote...";
-        const hasRemoteChanges = await checkRemoteChanges(workspaceFolder.uri.fsPath);
-
-        if (hasRemoteChanges) {
-            if (!typingDisposable) {
-                blockTyping();
-                statusBarItem.text = "$(warning) Remote has changes! Pull first";
-                statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
-                statusBarItem.tooltip = "Run git pull before editing";
-
-                if (!warningShown) {
-                    warningShown = true;
-                    vscode.window.showWarningMessage(
-                        '⚠️ Remote has unpulled changes! Pull before editing.',
-                        'Pull Now'
-                    ).then(action => {
-                        if (action === 'Pull Now') {
-                            vscode.commands.executeCommand('git.pull');
-                        }
-                    });
-                }
-            }
-        } else {
-            warningShown = false;
-            if (typingDisposable) {
-                typingDisposable.dispose();
-                typingDisposable = null;
-                statusBarItem.text = "$(check) Ready to code";
-                statusBarItem.backgroundColor = undefined;
-                statusBarItem.tooltip = "";
-            } else {
-                statusBarItem.text = "$(check) Ready to code";
-            }
-        }
-    }, 60000); // 1 min
+    runCheck();
+    scheduleCheck(INTERVAL_NORMAL);
 
     context.subscriptions.push({ dispose: () => clearInterval(checkInterval) });
     context.subscriptions.push(statusBarItem);
@@ -64,9 +78,10 @@ function blockTyping() {
         vscode.window.showWarningMessage(
             '⛔ Remote has unpulled changes! Pull before editing.',
             'Pull Now'
-        ).then(action => {
+        ).then(async action => {
             if (action === 'Pull Now') {
-                vscode.commands.executeCommand('git.pull');
+                await vscode.commands.executeCommand('git.pull');
+                await runCheck();
             }
         });
     });

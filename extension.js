@@ -51,7 +51,7 @@ function activate(context) {
                 statusBarItem.text = "$(check) Ready to code";
             }
         }
-    }, 10000);
+    }, 60000); // 1 min
 
     context.subscriptions.push({ dispose: () => clearInterval(checkInterval) });
     context.subscriptions.push(statusBarItem);
@@ -61,15 +61,13 @@ function blockTyping() {
     typingDisposable = vscode.workspace.onDidChangeTextDocument(event => {
         if (event.document.uri.scheme !== 'file') return;
 
-        vscode.commands.executeCommand('undo').then(() => {
-            vscode.window.showWarningMessage(
-                '⛔ Cannot edit — remote changes available! Run git pull first.',
-                'Pull Now'
-            ).then(action => {
-                if (action === 'Pull Now') {
-                    vscode.commands.executeCommand('git.pull');
-                }
-            });
+        vscode.window.showWarningMessage(
+            '⛔ Remote has unpulled changes! Pull before editing.',
+            'Pull Now'
+        ).then(action => {
+            if (action === 'Pull Now') {
+                vscode.commands.executeCommand('git.pull');
+            }
         });
     });
 }

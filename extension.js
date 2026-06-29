@@ -11,10 +11,14 @@ let warningShown = false;
 const INTERVAL_NORMAL = 60000;  // 1 min
 const INTERVAL_URGENT = 10000;  // 10 sec
 
+// region scheduleCheck
+
 function scheduleCheck(interval) {
     if (checkInterval) clearInterval(checkInterval);
     checkInterval = setInterval(runCheck, interval);
 }
+
+// region runCheck
 
 async function runCheck() {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -59,6 +63,8 @@ async function runCheck() {
     }
 }
 
+// region activate
+
 function activate(context) {
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
     statusBarItem.text = "$(sync~spin) Checking remote...";
@@ -71,14 +77,21 @@ function activate(context) {
     context.subscriptions.push(statusBarItem);
 }
 
+// region blockTyping
+
 function blockTyping() {
-    typingDisposable = vscode.workspace.onDidChangeTextDocument(event => {
+    typingDisposable = vscode.workspace.onDidChangeTextDocument(async event => {
         if (event.document.uri.scheme !== 'file') return;
 
+        // Don't spam — only show if not already showing
+        if (warningShown) return;
+
+        warningShown = true;
         vscode.window.showWarningMessage(
             '⛔ Remote has unpulled changes! Pull before editing.',
             'Pull Now'
         ).then(async action => {
+            warningShown = false;  // reset so it can show again if needed
             if (action === 'Pull Now') {
                 await vscode.commands.executeCommand('git.pull');
                 await runCheck();
@@ -86,6 +99,8 @@ function blockTyping() {
         });
     });
 }
+
+// region checkRemoteChanges
 
 async function checkRemoteChanges(repoPath) {
     try {
@@ -101,6 +116,8 @@ async function checkRemoteChanges(repoPath) {
         return false;
     }
 }
+
+// region deactivate
 
 function deactivate() {
     if (checkInterval) clearInterval(checkInterval);

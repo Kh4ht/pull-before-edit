@@ -1,4 +1,4 @@
-# Pull Before Edit
+# Pull Before Edit VSCode Extension
 
 Notify you when there are unpulled changes from GitHub.
 
